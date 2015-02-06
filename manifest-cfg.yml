@@ -1,0 +1,13 @@
+---
+applications:
+- name: ghost_zhfall
+  memory: 256M
+  instances: 1
+  host: ghost_zhfall
+  domain: mybluemix.net
+  path: .
+  command: node index --production
+  env:
+    NODE_ENV: production
+  services:
+  - ghostdb-mysql
