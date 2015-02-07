@@ -1,61 +1,41 @@
 // # Ghost Configuration
 // Setup your Ghost install for various environments
+// Documentation can be found at http://support.ghost.org/config/
 
 var path = require('path'),
     config;
 
-// Modifications for BlueMix compatibility
-var postCreds;
-var bluemixport = (process.env.VCAP_APP_PORT || '2368');
-var bluemixhost = (process.env.VCAP_APP_HOST || '127.0.0.1');
-var yaml = require('js-yaml');
-var fs = require('fs');
-var apphost = '';
-var appdomain = '';
-var appurl = '';
-
-// Read Manifest.yml file to construct ghost application url or throw exception on error
-try {
-  var doc = yaml.safeLoad(fs.readFileSync('./manifest-cfg.yml', 'utf8'));
-  apphost = doc.applications[0].host;
-  appdomain = doc.applications[0].domain;
-  appurl = 'http://' + apphost + '.' + appdomain;
-} catch (e) {
-  console.log(e);
-}
-
-if (process.env.VCAP_SERVICES) {
-    var services = JSON.parse(process.env.VCAP_SERVICES);
-    // look for a service starting with 'mysql'
-    // MySQL is the only one supported by Ghost right now
-    for (var svcName in services) {
-        if (svcName.match(/^mysql/)) {
-            postCreds = services[svcName][0]['credentials'];
-            postCreds.client = 'mysql';
-            postCreds.filename = '';
-        }
-    }
-} else {
-    // Let's assume we're running locally and populate
-    postCreds = {
-        name : '',
-        host : '127.0.0.1',
-        port : '2368',
-        user : '',
-        password : '',
-        client : 'mysql',
-        filename : path.join(__dirname, '/content/data/ghost-dev.db')
-    };
-}
-
 config = {
+    // ### Production
+    // When running Ghost in the wild, use the production environment
+    // Configure your URL and mail settings here
+    production: {
+        url: 'http://my-ghost-blog.com',
+        mail: {},
+        database: {
+            client: 'sqlite3',
+            connection: {
+                filename: path.join(__dirname, '/content/data/ghost.db')
+            },
+            debug: false
+        },
+
+        server: {
+            // Host to be passed to node's `net.Server#listen()`
+            host: '127.0.0.1',
+            // Port to be passed to node's `net.Server#listen()`, for iisnode set this to `process.env.PORT`
+            port: '2368'
+        }
+    },
+
     // ### Development **(default)**
-    development: {
+    'development-temp': {
         // The url to use when providing links to the site, E.g. in RSS and email.
-        url: 'http://localhost',
+        // Change this to your Ghost blogs published URL.
+        url: 'http://localhost:2368',
 
         // Example mail config
-        // Visit http://docs.ghost.org/mail for instructions
+        // Visit http://support.ghost.org/mail for instructions
         // ```
         //  mail: {
         //      transport: 'SMTP',
@@ -81,50 +61,72 @@ config = {
             host: '127.0.0.1',
             // Port to be passed to node's `net.Server#listen()`, for iisnode set this to `process.env.PORT`
             port: '2368'
+        },
+        paths: {
+            contentPath: path.join(__dirname, '/content/')
         }
     },
 
-    // ### Production
-    // When running Ghost in the wild, use the production environment
-    // Configure your URL and mail settings here
-    production: {
-    	// URL constructed from data within the manifest.yml file.
-        url: appurl,
-        
-        // Example mail config
-        // Visit http://docs.ghost.org/mail for instructions
-        // ```
-        //  mail: {
-        //      transport: 'SMTP',
-        //      options: {
-        //          service: 'Mailgun',
-        //          auth: {
-        //              user: '', // mailgun username
-        //              pass: ''  // mailgun password
-        //          }
-        //      }
-        //  },
-        // ```
-        
+    // **Developers only need to edit below here**
+
+    // ### Testing
+    // Used when developing Ghost to run tests and check the health of Ghost
+    // Uses a different port number
+    testing: {
+        url: 'http://127.0.0.1:2369',
         database: {
-            client: postCreds.client,
+            client: 'sqlite3',
             connection: {
-               filename: postCreds.filename,
-               host: postCreds.hostname,
-               user: postCreds.username,
-               password: postCreds.password,
-               database: postCreds.name,
-               port: postCreds.port,
-               charset: 'utf8'
-            },
-            debug: false
+                filename: path.join(__dirname, '/content/data/ghost-test.db')
+            }
         },
         server: {
-            // Host to be passed to node's `net.Server#listen()`
-            host: bluemixhost,
-            // Port to be passed to node's `net.Server#listen()`, for iisnode set this to `process.env.PORT`
-            port: bluemixport
-        }
+            host: '127.0.0.1',
+            port: '2369'
+        },
+        logging: false
+    },
+
+    // ### Testing MySQL
+    // Used by Travis - Automated testing run through GitHub
+    development: {
+        url: 'http://127.0.0.1:8080',
+        database: {
+            client: 'mysql',
+            connection: {
+                host     : '127.0.0.1',
+                user     : 'test',
+                password : 'password',
+                database : 'test',
+                charset  : 'utf8'
+            }
+        },
+        server: {
+            host: '0.0.0.0',
+            port: '8080'
+        },
+        logging: false
+    },
+
+    // ### Testing pg
+    // Used by Travis - Automated testing run through GitHub
+    'testing-pg': {
+        url: 'http://127.0.0.1:2369',
+        database: {
+            client: 'pg',
+            connection: {
+                host     : '127.0.0.1',
+                user     : 'postgres',
+                password : '',
+                database : 'ghost_testing',
+                charset  : 'utf8'
+            }
+        },
+        server: {
+            host: '127.0.0.1',
+            port: '2369'
+        },
+        logging: false
     }
 };
 
